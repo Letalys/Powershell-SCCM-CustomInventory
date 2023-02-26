@@ -96,9 +96,9 @@ If you want, you can use ready-to-use scripts :
 
 |Script|Description|
 |-|-|
-|[CustomInventories/CustomInv_PnPDrivers.ps1](./CustomInventories/CustomInv_PnPDrivers.ps1)| Generate SCCM inventory for all PnpSignedDrivers |
+|[CustomInventories/CustomInv_PnPDrivers.ps1](./CustomInventories/CustomInv-PnPDrivers.ps1)| Generate SCCM inventory for all PnpSignedDrivers |
 |[CustomInventories/CustomInv-UsersProfiles.ps1](./CustomInventories/CustomInv-UsersProfiles.ps1)| Get all User Session which is created on a machine and connect to AD to get more information about them |
-|[CustomInventories/CustomInv_OracleClient.ps1](./CustomInventories/CustomInv_OracleClient.ps1)| Generate SCCM inventory for obtains information about Oracle Client (Install by OUI) |
+|[CustomInventories/CustomInv_OracleClient.ps1](./CustomInventories/CustomInv-OracleClient.ps1.ps1)| Generate SCCM inventory for obtains information about Oracle Client (Install by OUI) |
 
 
 
