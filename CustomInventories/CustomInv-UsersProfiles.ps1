@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Create Inventory for all user having a session to the computer
+  Create Inventory for User session present in computer
 .DESCRIPTION
   The create a custom inventory of all User session on the machine, connecting to Active Directory to retrieving User Information
 .OUTPUTS
