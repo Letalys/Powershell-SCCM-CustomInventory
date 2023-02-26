@@ -1,2 +1,2 @@
-# Powershell-SCCM-Scripts
+# SCCM : Create a Custom Inventory
 Some Powershell integrate SCCM
