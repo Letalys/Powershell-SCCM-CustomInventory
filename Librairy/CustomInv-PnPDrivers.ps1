@@ -1,19 +1,22 @@
 <#
 .SYNOPSIS
-  <Overview of WMI Class>
+  Get all Of PnPSignedDrivers
 .DESCRIPTION
-  <Brief description of script and generated WMi Class>
+  Generate a CustomInventory for PnpDrivers Which can use in SCCM Hardware Inventory
 .OUTPUTS
   Explaination of the new WMI Class and properties and the ClassPath
-  <Example :
-    Custom_WMIClassName :: Root\Cimv2
-        [String]PropertyName1 : Description
-        [String]PropertyName2 : Description
-  >
+    CustomInventory_PnpDrivers :: Root\Cimv2
+        "DeviceID" : Get the device ID (Driver Name)
+        "DeviceClass" : Get the Drive Class (NET, MEDIA, PRINT, ...)
+        "DeviceName" : Name of the device associate to the driver
+        "DriverDate" : Version date of the driver
+        "DriverProviderName"
+        "DriverVersion" : Version 
+        "HardwareID" 
 .NOTES
   Version:        1.0
-  Author:         <Your Name>
-  Creation Date:  <Creation Date>
+  Author:         Letalys
+  Creation Date:  26/02/2023
   Purpose/Change: Initial script development
 
 .LINK
