@@ -9,7 +9,7 @@ You can use the template file to generate your own WMI classes and instances tha
 
 | Script    |
 |-----------|
-| [./Template/CustomInv_Template.ps1](./Template/CustomInv_Template.ps1) |
+| [Template/CustomInv-Template.ps1](Template/CustomInv-Template.ps1) |
 
 ### How To use the template
 
