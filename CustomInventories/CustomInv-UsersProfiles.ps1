@@ -14,6 +14,8 @@
         "UserMail" : Get the User mail from ActiveDirectory
   >
 .NOTES
+    You need to fill remote connexion Properties to get ActiveDirectory Module from another computer or server. (L152)
+.NOTES
   Version:        1.0
   Author:         Letalys
   Creation Date:  26/02/2023
