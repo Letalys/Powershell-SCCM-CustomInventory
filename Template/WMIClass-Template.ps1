@@ -93,10 +93,10 @@ Function Add-WMIInstances {
             $CurrentInstance = Set-WmiInstance -Namespace "root\cimv2" -class $ClassName -argument @{Key = $Key} 
 
             foreach($prop in ($o| Get-Member -MemberType NoteProperty | Where-Object {$_.Name -ne "key"})){
-                
                 $CurrentInstance.($prop.Name) = $o.($prop.Name)
                 $CurrentInstance.Put() | Out-Null
             }
+            Write-Output "Added Instance to $ClassName for : " $o
         }
     }
     End{}
