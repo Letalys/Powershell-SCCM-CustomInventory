@@ -172,7 +172,7 @@ Try{
             $CreateUserProfilObject | Add-Member -Name "SSID" -membertype Noteproperty -Value $CurrentUserSID
             $CreateUserProfilObject | Add-Member -Name "Profil" -membertype Noteproperty -Value $CurrentUserProfil
             $CreateUserProfilObject | Add-Member -Name "Session" -membertype Noteproperty -Value $ADquery.sAMAccountName
-            $CreateUserProfilObject | Add-Member -Name "NomComplet" -membertype Noteproperty -Value  $ADquery.DisplayName
+            $CreateUserProfilObject | Add-Member -Name "FullName" -membertype Noteproperty -Value  $ADquery.DisplayName
             $CreateUserProfilObject | Add-Member -Name "Description" -membertype Noteproperty -Value  $ADquery.Description
             $CreateUserProfilObject | Add-Member -Name "Contact" -membertype Noteproperty -Value  $ADquery.Mail
 
