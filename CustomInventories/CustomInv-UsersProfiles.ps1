@@ -20,7 +20,12 @@
   Author:         Letalys
   Creation Date:  26/02/2023
   Purpose/Change: Initial script development
-
+.NOTES
+  Version:        2.0
+  Author:         Letalys
+  Creation Date:  31/05/2023
+  Purpose/Change: Change the remote connexion to Domain Controler for using ADSISEARCHER.
+                  More easier to use and more secure. Correct some variables.
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
@@ -106,25 +111,7 @@ Function Add-WMIInstances {
     }
     End{}
 }
-Function Open-RemotePSSessionForADModule{
-    Param(
-        [Parameter(Mandatory=$true)][String]$UserName,
-        [Parameter(Mandatory=$true)][String]$UserPwd,
-        [Parameter(Mandatory=$true)][String]$ComputerName
-    )
 
-    $secStringPassword = ConvertTo-SecureString $UserPwd -AsPlainText -Force
-    $credObject = New-Object System.Management.Automation.PSCredential ($userName, $secStringPassword)
-
-    $S = New-PSSession -ComputerName $ComputerName -Credential $credObject
-    Export-PSsession -Session $S -Module ActiveDirectory -OutputModule RemoteAD -Force -AllowClobber -ErrorAction SilentlyContinue
-
-    Import-Module RemoteAD -Force -ErrorAction SilentlyContinue
-    Set-Variable -Name "GlobCurrentPSSession" -Value $S -Scope Global -Force  -ErrorAction SilentlyContinue
-}
-Function Close-RemotePSSessionForADMOdule{
-    Remove-PSSession -Session $GlobCurrentPSSession
-}
 
 #region Custom Class Definition
 $TemplateObject = New-Object PSObject
@@ -134,58 +121,51 @@ $TemplateObject | Add-Member -MemberType NoteProperty -Name "Session" -Value $nu
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserFullName" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserDescription" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserMail" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "DN" -Value $null
 
 New-WMIClass -ClassName "CustomInventory_UsersProfiles" -ClassTemplate $TemplateObject
 #endregion Custom Class Definition
 
 Try{
-    #region Custom Code
     #Define the ArrayList for your Instances Objects
     [System.Collections.Arraylist]$InstancesObjectArray =@()
 
-    $RegistryKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\"
-    $ProfileList = Get-ChildItem -Path $RegistryKey
+    #region Custom Code
+        $RegistryKey = "\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\"
+        $ProfileList = Get-ChildItem -Path "HKLM:\$RegistryKey"
 
-    #Open Remote Session to computer who have Module ActiveDirectory for Import if you d'ont want install the module on all your machine, 
-    # may be you can use [ADSI] instead of ActiveDirectory Module 
-    # but you need the CCM account have rights to connect
-    Open-RemotePSSessionForADModule -UserName "-----------" -UserPwd "-------------" -ComputerName "----------"
+        foreach($RegEntry in $ProfileList){
 
-    foreach($Profile in $ProfileList){
-        $CurrentSID = $Profile.Name.Replace("HKEY_LOCAL_MACHINE\$RegistryKey",$null)
-        $CurrentProfilePath = $Profile | Get-itemproperty | Select-Object ProfileImagePath
+            $CurrentSID = $RegEntry.Name.Replace("HKEY_LOCAL_MACHINE$($RegistryKey)",$null)
+            $CurrentProfilePath = $RegEntry | Get-itemproperty | Select-Object ProfileImagePath
 
-        if($CurrentProfilePath.ProfileImagePath -like "C:\Users\*"){
-            $CurrentUserProfil = $($CurrentProfilePath.ProfileImagePath).replace("C:\Users\",$null)
-            $CurrentUserSID = $CurrentSID
+            if(($CurrentProfilePath.ProfileImagePath -like "C:\Users\*") -and -not ($CurrentProfilePath.ProfileImagePath -like "C:\Users\Default*") ){
+                $CurrentUserProfil = $($CurrentProfilePath.ProfileImagePath).replace("C:\Users\",$null)
+                $CurrentUserSID = $CurrentSID
 
-            Invoke-Command -Session $GlobCurrentPSSession -ScriptBlock {
-                param($RemotePSSessionVar) $RemoteValue = $RemotePSSessionVar
-            } -ArgumentList $CurrentUserProfil
+                #Search by ADSI
+                $UserSearcher = [ADSISearcher]"(&(objectClass=user)(SamAccountName=$($CurrentUserProfil)))"
+                $UserResult = $UserSearcher.FindOne()
 
-            $ADquery = Invoke-Command -Session $GlobCurrentPSSession -ScriptBlock {
-                Get-ADUSer -Filter {sAMAccountName -eq $RemoteValue} -Properties Description, DisplayName, mail, sAMAccountName 
-                | Select-Object Description, DisplayName, mail,sAMAccountName }
+                $CreateUserProfilObject = New-Object Psobject
+                $CreateUserProfilObject | Add-Member -Name "Key" -membertype Noteproperty -Value $CurrentUserSID
+                $CreateUserProfilObject | Add-Member -Name "SSID" -membertype Noteproperty -Value $CurrentSID
+                $CreateUserProfilObject | Add-Member -Name "Profile" -membertype Noteproperty -Value $CurrentUserProfil
+                $CreateUserProfilObject | Add-Member -Name "Session" -membertype Noteproperty -Value $UserResult.Properties.samaccountname
+                $CreateUserProfilObject | Add-Member -Name "UserFullName" -membertype Noteproperty -Value  $UserResult.Properties.displayname
+                $CreateUserProfilObject | Add-Member -Name "UserDescription" -membertype Noteproperty -Value  $UserResult.Properties.description
+                $CreateUserProfilObject | Add-Member -Name "UserMail" -membertype Noteproperty -Value  $UserResult.Properties.mail
+                $CreateUserProfilObject | Add-Member -Name "DN" -membertype Noteproperty -Value  $UserResult.Properties.distinguishedname
 
-            $CreateUserProfilObject = New-Object Psobject
-            $CreateUserProfilObject | Add-Member -Name "Key" -membertype Noteproperty -Value $CurrentUserSID
-            $CreateUserProfilObject | Add-Member -Name "SSID" -membertype Noteproperty -Value $CurrentUserSID
-            $CreateUserProfilObject | Add-Member -Name "Profil" -membertype Noteproperty -Value $CurrentUserProfil
-            $CreateUserProfilObject | Add-Member -Name "Session" -membertype Noteproperty -Value $ADquery.sAMAccountName
-            $CreateUserProfilObject | Add-Member -Name "FullName" -membertype Noteproperty -Value  $ADquery.DisplayName
-            $CreateUserProfilObject | Add-Member -Name "Description" -membertype Noteproperty -Value  $ADquery.Description
-            $CreateUserProfilObject | Add-Member -Name "Contact" -membertype Noteproperty -Value  $ADquery.Mail
-
-            #Add Your Object to The ArrayList
-            $InstancesObjectArray.Add($CreateUserProfilObject) | Out-Null
-        }
+                #Add Your Object to The ArrayList
+                $InstancesObjectArray.Add($CreateUserProfilObject) | Out-Null
+            }
         
-    }
+        }        
+    #endregion Custom Code
 
     #Convert all object in Array to WMI Instance
     Add-WMIInstances -ClassName "CustomInventory_UsersProfiles" -ObjectArrayList $InstancesObjectArray
-    #endregion Custom Code
-
     #Invoke Hardware Inventory
     Invoke-CCMHardwareInventory
     return 0 #Script Process With Success (return 0 for SCCM)
