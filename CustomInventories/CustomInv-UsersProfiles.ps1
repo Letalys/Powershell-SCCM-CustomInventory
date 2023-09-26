@@ -14,7 +14,7 @@
         "UserMail" : Get the User mail from ActiveDirectory
   >
 .NOTES
-    You need to fill remote connexion Properties to get ActiveDirectory Module from another computer or server. (L152)
+    You must have rights to read AD from ADSI
 .NOTES
   Version:        1.0
   Author:         Letalys
