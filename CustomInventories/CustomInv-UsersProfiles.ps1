@@ -26,6 +26,12 @@
   Creation Date:  31/05/2023
   Purpose/Change: Change the remote connexion to Domain Controler for using ADSISEARCHER.
                   More easier to use and more secure. Correct some variables.
+.NOTES
+  Version:        2.1
+  Author:         Letalys
+  Creation Date:  13/10/2023
+  Purpose/Change: Add information to get profile folder and user document folder size and if a user arise from local user or AD user.
+                  Changing Properties names
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
@@ -112,16 +118,18 @@ Function Add-WMIInstances {
     End{}
 }
 
-
 #region Custom Class Definition
 $TemplateObject = New-Object PSObject
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "SSID" -Value $null
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "Profile" -Value $null
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "Session" -Value $null
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserFullName" -Value $null
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserDescription" -Value $null
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserMail" -Value $null
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "DN" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfile" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileFolder" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileFolderSizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileDocumentsFolderySizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "Source" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADSamAccountName" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserFullName" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserDescription" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserMail" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADDN" -Value $null
 
 New-WMIClass -ClassName "CustomInventory_UsersProfiles" -ClassTemplate $TemplateObject
 #endregion Custom Class Definition
@@ -134,12 +142,14 @@ Try{
         $RegistryKey = "\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\"
         $ProfileList = Get-ChildItem -Path "HKLM:\$RegistryKey"
 
+        $LocalUsers = Get-LocalUser
+
         foreach($RegEntry in $ProfileList){
 
             $CurrentSID = $RegEntry.Name.Replace("HKEY_LOCAL_MACHINE$($RegistryKey)",$null)
             $CurrentProfilePath = $RegEntry | Get-itemproperty | Select-Object ProfileImagePath
 
-            if(($CurrentProfilePath.ProfileImagePath -like "C:\Users\*") -and -not ($CurrentProfilePath.ProfileImagePath -like "C:\Users\Default*") ){
+            if(($CurrentProfilePath.ProfileImagePath -like "C:\Users\*") -and -not ($CurrentProfilePath.ProfileImagePath -like "C:\Users\Default*")){
                 $CurrentUserProfil = $($CurrentProfilePath.ProfileImagePath).replace("C:\Users\",$null)
                 $CurrentUserSID = $CurrentSID
 
@@ -149,13 +159,33 @@ Try{
 
                 $CreateUserProfilObject = New-Object Psobject
                 $CreateUserProfilObject | Add-Member -Name "Key" -membertype Noteproperty -Value $CurrentUserSID
-                $CreateUserProfilObject | Add-Member -Name "SSID" -membertype Noteproperty -Value $CurrentSID
-                $CreateUserProfilObject | Add-Member -Name "Profile" -membertype Noteproperty -Value $CurrentUserProfil
-                $CreateUserProfilObject | Add-Member -Name "Session" -membertype Noteproperty -Value $UserResult.Properties.samaccountname
-                $CreateUserProfilObject | Add-Member -Name "UserFullName" -membertype Noteproperty -Value  $UserResult.Properties.displayname
-                $CreateUserProfilObject | Add-Member -Name "UserDescription" -membertype Noteproperty -Value  $UserResult.Properties.description
-                $CreateUserProfilObject | Add-Member -Name "UserMail" -membertype Noteproperty -Value  $UserResult.Properties.mail
-                $CreateUserProfilObject | Add-Member -Name "DN" -membertype Noteproperty -Value  $UserResult.Properties.distinguishedname
+                $CreateUserProfilObject | Add-Member -Name "UserProfile" -membertype Noteproperty -Value $CurrentUserProfil
+                $CreateUserProfilObject | Add-Member -Name "UserProfileFolder" -membertype Noteproperty -Value $CurrentProfilePath.ProfileImagePath
+
+                $FullProfilSizeMo = [math]::Round((Get-ChildItem "$($CurrentProfilePath.ProfileImagePath)" -Recurse -Force | Measure-Object -Property Length -Sum).Sum / 1Mb,2)
+                $CreateUserProfilObject | Add-Member -Name "UserProfileFolderSizeMB" -membertype Noteproperty -Value $FullProfilSizeMo
+
+                if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Documents") {
+                    $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Documents"
+                    $files = Get-ChildItem $FolderPath -Recurse -Force -File -ErrorAction Ignore
+                    if ($files) {
+                        $FullProfilDocumentSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileDocumentsFolderySizeMB" -MemberType NoteProperty -Value $FullProfilDocumentSizeMo
+                    } else {
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileDocumentsFolderySizeMB" -MemberType NoteProperty -Value 0
+                    }
+                }
+
+                if($CurrentUserProfil -in $LocalUsers.Name){
+                    $CreateUserProfilObject | Add-Member -Name "Source" -membertype Noteproperty -Value "Local"
+                }else{
+                    $CreateUserProfilObject | Add-Member -Name "Source" -membertype Noteproperty -Value "ActiveDirectory"
+                    $CreateUserProfilObject | Add-Member -Name "ADSamAccountName" -membertype Noteproperty -Value $UserResult.Properties.samaccountname
+                    $CreateUserProfilObject | Add-Member -Name "ADUserFullName" -membertype Noteproperty -Value  $UserResult.Properties.displayname
+                    $CreateUserProfilObject | Add-Member -Name "ADUserDescription" -membertype Noteproperty -Value  $UserResult.Properties.description
+                    $CreateUserProfilObject | Add-Member -Name "ADUserMail" -membertype Noteproperty -Value  $UserResult.Properties.mail
+                    $CreateUserProfilObject | Add-Member -Name "ADDN" -membertype Noteproperty -Value  $UserResult.Properties.distinguishedname                    
+                }
 
                 #Add Your Object to The ArrayList
                 $InstancesObjectArray.Add($CreateUserProfilObject) | Out-Null
