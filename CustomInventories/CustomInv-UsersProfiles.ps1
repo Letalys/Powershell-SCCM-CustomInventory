@@ -142,6 +142,7 @@ Try{
         $RegistryKey = "\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\"
         $ProfileList = Get-ChildItem -Path "HKLM:\$RegistryKey"
 
+ 	#This not work on WIndows 7, you have to remove the condition lower to determinate User source (Local/AD)
         $LocalUsers = Get-LocalUser
 
         foreach($RegEntry in $ProfileList){
