@@ -1,24 +1,56 @@
 <#
 .SYNOPSIS
-  <Overview of WMI Class>
+  Create Inventory for User session present in computer (Windows 7)
 .DESCRIPTION
-  <Brief description of script and generated WMi Class>
+  The create a custom inventory of all User session on the machine, connecting to Active Directory to retrieving User Information
 .OUTPUTS
   Explaination of the new WMI Class and properties and the ClassPath
-  <Example :
-    Custom_WMIClassName :: Root\Cimv2
-        [String]PropertyName1 : Description
-        [String]PropertyName2 : Description
-  >
+    CustomInventory_UsersProfiles :: Root\Cimv2
+        "Key" : User Account SSID
+        "UserProfile" : Name of Account
+        "UserProfileFolder" : Path to user profile
+        "UserProfileFolderSizeMB" : Size of User profile
+        "UserProfileDocumentsFolderySizeMB" : Size of Document folder
+        "UserProfileMusicFolderySizeMB" : Size of Music Folder
+        "UserProfileVideosFolderySizeMB" : Size of Video Folder
+        "UserProfilePicturesFolderySizeMB" : Size of Picture folder
+        "Source" : Local or Active Directory account
+        "ADSamAccountName" : AD Samaccount Name
+        "ADUserFullName" : Userfull name from active Directory
+        "ADUserDescription" : Userfull name from active Directory
+        "ADUserMail" : User mail from Active Directory
+        "ADDN" : Distinguished Name from Active Directoy 
+
+.NOTES
+    You must have rights to read AD from ADSI.
+    The sizes returned may not be accurate because certain system files and folders are not taken into account during calculations 
+    But that leaves a good estimate
 .NOTES
   Version:        1.0
-  Author:         <Your Name>
-  Creation Date:  <Creation Date>
+  Author:         Letalys
+  Creation Date:  26/02/2023
   Purpose/Change: Initial script development
-
+.NOTES
+  Version:        2.0
+  Author:         Letalys
+  Creation Date:  31/05/2023
+  Purpose/Change: Change the remote connexion to Domain Controler for using ADSISEARCHER.
+                  More easier to use and more secure. Correct some variables.
+.NOTES
+  Version:        2.1
+  Author:         Letalys
+  Creation Date:  13/10/2023
+  Purpose/Change: Add information to get profile folder and user document folder size and if a user arise from local user or AD user.
+                  Changing Properties names
+.NOTES
+  Version:        2.2
+  Author:         Letalys
+  Creation Date:  24/10/2023
+  Purpose/Change: Add some information about folder profile size. Using WMIObject for working in Windows 7. 
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
+
 $VerbosePreference = 'SilentlyContinue'
 
 Function Invoke-CCMHardwareInventory{
@@ -57,18 +89,16 @@ Function New-WMIClass{
     
     Begin{}
     Process{
-            $WMITest = Get-WmiObject $ClassName -ErrorAction SilentlyContinue
+        $CurrentWMI = Get-CimInstance $ClassName -ErrorAction SilentlyContinue
 
-	    if ($WMITest -ne $null) {
-            #Supression de la classe si existe
-		    $Output = "Suppression de la classe WMI : $ClassName"
-		    Remove-WmiObject $ClassName
+	    if ($CurrentWMI -ne $null) {
+		    $CurrentWMI | Remove-CimInstance
 
-		    $WMITest = Get-WmiObject $ClassName -ErrorAction SilentlyContinue
-		    if ($WMITest -eq $null) {
+		    $CurrentWMI = Get-CimInstance $ClassName -ErrorAction SilentlyContinue
+		    if ($CurrentWMI -eq $null) {
 			    $Output += "OK"
 		    } else {
-			    $Output += "Erreur la classe WMI est toujours présente"
+			    $Output += "WMI Instance always exist"
 			    exit 1
 		    }
 		    Write-Verbose $Output
@@ -121,6 +151,7 @@ Function Add-WMIInstances {
     }
     End{}
 }
+
 Function Test-WMIClass{
     [CmdletBinding()]
 	param
@@ -137,43 +168,135 @@ Function Test-WMIClass{
     }
 }
 
+
 #region Custom Class Definition
-$CurrentClassName = "CustomInventory_YourClassName"
+$CurrentClassName = "CustomInventory_UsersProfiles"
 
 $TemplateObject = New-Object PSObject
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "CustomProp1" -Value $null
-$TemplateObject | Add-Member -MemberType NoteProperty -Name "CustomProp2" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfile" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileFolder" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileFolderSizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileDocumentsFolderySizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileMusicFolderySizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileVideosFolderySizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfilePicturesFolderySizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "Source" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADSamAccountName" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserFullName" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserDescription" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserMail" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "ADDN" -Value $null
 #endregion Custom Class Definition
 
 Try{
-    #region Custom Code
     #Define the ArrayList for your Instances Objects
     [System.Collections.Arraylist]$InstancesObjectArray =@()
 
-    <#
-    Put your code for generating one or several Instance Object, you need to respect template object Property
-    You can Add Key Property value if you want customize it, else a GUID is generated for the instance key
-    EXAMPLE :  
-    #>
-    $MyObjectInstance = New-Object PSObject
-    #$MyObjectInstance | Add-Member -MemberType NoteProperty -Name "Key" -Value "CustomKey"
-    $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "CustomProp1" -Value "SetValue1"
-    $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "CustomProp2" -Value "SetValue2"
+    #region Custom Code
+        $RegistryKey = "\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\"
+        $ProfileList = Get-ChildItem -Path "HKLM:\$RegistryKey"
 
-    #Add Your Object to The ArrayList
-    $InstancesObjectArray.Add($MyObjectInstance) | Out-Null
+ 	#This not work on WIndows 7, you have to remove the condition lower to determinate User source (Local/AD)
+        $LocalUsers = Get-LocalUser
+
+        foreach($RegEntry in $ProfileList){
+
+            $CurrentSID = $RegEntry.Name.Replace("HKEY_LOCAL_MACHINE$($RegistryKey)",$null)
+            $CurrentProfilePath = $RegEntry | Get-itemproperty | Select-Object ProfileImagePath
+
+            if(($CurrentProfilePath.ProfileImagePath -like "C:\Users\*") -and -not ($CurrentProfilePath.ProfileImagePath -like "C:\Users\Default*")){
+                $CurrentUserProfil = $($CurrentProfilePath.ProfileImagePath).replace("C:\Users\",$null)
+                $CurrentUserSID = $CurrentSID
+
+                #Search by ADSI
+                $UserSearcher = [ADSISearcher]"(&(objectClass=user)(SamAccountName=$($CurrentUserProfil)))"
+                $UserResult = $UserSearcher.FindOne()
+
+                $CreateUserProfilObject = New-Object Psobject
+                $CreateUserProfilObject | Add-Member -Name "Key" -membertype Noteproperty -Value $CurrentUserSID
+
+                $CreateUserProfilObject | Add-Member -Name "UserProfile" -membertype Noteproperty -Value $CurrentUserProfil
+                $CreateUserProfilObject | Add-Member -Name "UserProfileFolder" -membertype Noteproperty -Value $CurrentProfilePath.ProfileImagePath
+
+                $FullProfilSizeMo = [math]::Round((Get-ChildItem "$($CurrentProfilePath.ProfileImagePath)" -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1Mb,2)
+                $CreateUserProfilObject | Add-Member -Name "UserProfileFolderSizeMB" -membertype Noteproperty -Value $FullProfilSizeMo
+
+                if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Documents") {
+                    $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Documents"
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Force  -ErrorAction SilentlyContinue
+                    if ($files) {
+                        $FullProfilDocumentSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileDocumentsFolderySizeMB" -MemberType NoteProperty -Value $FullProfilDocumentSizeMo
+                    } else {
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileDocumentsFolderySizeMB" -MemberType NoteProperty -Value 0
+                    }
+                }
+
+                if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Videos") {
+                    $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Videos"
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Force  -ErrorAction SilentlyContinue
+                    if ($files) {
+                        $FullProfilVideosSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileVideosFolderySizeMB" -MemberType NoteProperty -Value $FullProfilVideosSizeMo
+                    } else {
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileVideosFolderySizeMB" -MemberType NoteProperty -Value 0
+                    }
+                }
+
+                if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Music") {
+                    $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Music"
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Force  -ErrorAction SilentlyContinue
+                    if ($files) {
+                        $FullProfilMusicSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileMusicFolderySizeMB" -MemberType NoteProperty -Value $FullProfilMusicSizeMo
+                    } else {
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileMusicFolderySizeMB" -MemberType NoteProperty -Value 0
+                    }
+                }
+
+                if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Pictures") {
+                    $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Pictures"
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Force  -ErrorAction SilentlyContinue
+                    if ($files) {
+                        $FullProfilPicturesSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+                        $CreateUserProfilObject | Add-Member -Name "UserProfilePicturesFolderySizeMB" -MemberType NoteProperty -Value $FullProfilPicturesSizeMo
+                    } else {
+                        $CreateUserProfilObject | Add-Member -Name "UserProfilePicturesFolderySizeMB" -MemberType NoteProperty -Value 0
+                    }
+                }
+
+                if($CurrentUserProfil -in $LocalUsers.Name){
+                    $CreateUserProfilObject | Add-Member -Name "Source" -membertype Noteproperty -Value "Local"
+                }else{
+                    $CreateUserProfilObject | Add-Member -Name "Source" -membertype Noteproperty -Value "ActiveDirectory"
+                    $CreateUserProfilObject | Add-Member -Name "ADSamAccountName" -membertype Noteproperty -Value $UserResult.Properties.samaccountname 
+                    $CreateUserProfilObject | Add-Member -Name "ADUserFullName" -membertype Noteproperty -Value  $UserResult.Properties.displayname 
+                    $CreateUserProfilObject | Add-Member -Name "ADUserDescription" -membertype Noteproperty -Value  $UserResult.Properties.description 
+                    $CreateUserProfilObject | Add-Member -Name "ADUserMail" -membertype Noteproperty -Value  $UserResult.Properties.mail 
+                    $CreateUserProfilObject | Add-Member -Name "ADDN" -membertype Noteproperty -Value  $UserResult.Properties.distinguishedname
+                }
+
+                #Add Your Object to The ArrayList
+                $InstancesObjectArray.Add($CreateUserProfilObject) | Out-Null
+            }
+        
+        }        
+    #endregion Custom Code
 
     #Convert all object in Array to WMI Instance
     New-WMIClass -ClassName $CurrentClassName -ClassTemplate $TemplateObject
     Add-WMIInstances -ClassName $CurrentClassName -ObjectArrayList $InstancesObjectArray
-    #endregion Custom Code
-
+    
     #Invoke Hardware Inventory
     Invoke-CCMHardwareInventory
-    
+
     #Test
     Return (Test-WMIClass -ClassName $CurrentClassName)
 }catch{
-    Write-error "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
-    Return -1 #Script Failed  (return -1 for SCCM)
+    Write-Host "An error occurred : "
+    Write-Host "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
+
+    Write-Verbose $_
+    Write-Verbose "Return -1 for general error"
+    return -1
 }
