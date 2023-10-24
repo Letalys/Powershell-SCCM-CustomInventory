@@ -51,29 +51,31 @@
     Author : Letalys (https://github.com/Letalys)
 #>
 
+$VerbosePreference = 'SilentlyContinue'
+
 Function Invoke-CCMHardwareInventory{
     Begin{
-      Write-Output "Trying to perform CCM hardware inventory..."
+      Write-Verbose "Trying to perform CCM hardware inventory..."
     }
     Process{
       Try{
         $GetSMSClient = Get-CimInstance -Class "SMS_Client" -Namespace 'root\ccm' -ErrorAction SilentlyContinue
         if($null -ne $GetSMSClient){
-            Write-Output "CCM Agent found, performing hardware inventory."
+            Write-Verbose "CCM Agent found, performing hardware inventory."
 
 	        $SMSClient = [wmiclass] "\\$($env:COMPUTERNAME)\root\ccm:SMS_Client"
 	        $SMSClient.TriggerSchedule("{00000000-0000-0000-0000-000000000001}") | Out-Null
         }else{
-            Write-Warning "CCM Agent not found, will not perform hardware inventory."
+            Write-Verbose "CCM Agent not found, will not perform hardware inventory."
         }
       }Catch{
-        Write-error "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
+        Write-Verbose "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
         Break
       }
     }
     End{
       If($?){
-        Write-Output "Completed Successfully."
+        Write-Verbose "Completed Successfully."
       }
     }
 }
@@ -87,9 +89,24 @@ Function New-WMIClass{
     
     Begin{}
     Process{
-        #Check existing WMI Class
-        if($null -ne (Get-CimInstance $ClassName -ErrorAction SilentlyContinue)){Write-Output "Deleting class $ClassName" ; Remove-WmiObject $ClassName}
-        Write-Output "Create New WMI Class :  $ClassName"
+        $WMITest = Get-WmiObject $ClassName -ErrorAction SilentlyContinue
+
+	    if ($WMITest -ne $null) {
+            #Supression de la classe si existe
+		    $Output = "Suppression de la classe WMI : $ClassName"
+		    Remove-WmiObject $ClassName
+
+		    $WMITest = Get-WmiObject $ClassName -ErrorAction SilentlyContinue
+		    if ($WMITest -eq $null) {
+			    $Output += "OK"
+		    } else {
+			    $Output += "Erreur la classe WMI est toujours présente"
+			    exit 1
+		    }
+		    Write-Verbose $Output
+	    }
+
+        Write-Verbose "Create New WMI Class :  $ClassName"
 
         $newClass = New-Object System.Management.ManagementClass("root\cimv2", [String]::Empty, $null);
 	    $newClass["__CLASS"] = $ClassName;
@@ -101,7 +118,7 @@ Function New-WMIClass{
         $TemplateProperties = $ClassTemplate | Get-Member -MemberType NoteProperty
 
         foreach($prop in $TemplateProperties){
-            Write-Output "`t Add Class Property : $($Prop.Name)"
+            Write-Verbose "`t Add Class Property : $($Prop.Name)"
             $newClass.Properties.Add("$($Prop.Name)", [System.Management.CimType]::String, $false)
         }
             
@@ -119,21 +136,44 @@ Function Add-WMIInstances {
     Begin{}
     Process{
         foreach($o in $ObjectArrayList){
+            #Create GUID Key
             $GUID = [GUID]::NewGuid()
-            if($null -ne $o.Key){$Key = $o.key}else{$Key = $GUID}
-            $CurrentInstance = Set-WmiInstance -Namespace "root\cimv2" -class $ClassName -argument @{Key = $Key} 
 
-            foreach($prop in ($o| Get-Member -MemberType NoteProperty | Where-Object {$_.Name -ne "key"})){
-                $CurrentInstance.($prop.Name) = $o.($prop.Name)
-                $CurrentInstance.Put() | Out-Null
+            if($null -ne $o.Key){$Key = $o.key}else{$Key = $GUID}
+
+            $CurrentObjectPropertiesList = $o | Get-Member -MemberType NoteProperty
+
+            $AddInstance = New-CimInstance -ClassName $ClassName -Key $key -Property @{Key = $key}
+            Write-Verbose "Create Instance with key : $key"
+
+            foreach($prop in $CurrentObjectPropertiesList){
+                    Set-CimInstance -CimInstance $AddInstance -Property @{$Prop.Name = "$($o.($Prop.Name))"}     
             }
-            Write-Output "Added Instance to $ClassName for : " $o
         }
     }
     End{}
 }
 
+Function Test-WMIClass{
+    [CmdletBinding()]
+	param
+	(
+		[ValidateNotNullOrEmpty()][Parameter(Mandatory=$true)][string]$ClassName
+	)
+    $ClassExist = Get-CimInstance -ClassName $ClassName
+    if($ClassExist -ne $null){
+        Write-Verbose "Return 0 for good execution"
+        return 0
+    }else{
+        Write-Verbose "Return 1 when Class Not create properly"
+        return 1
+    }
+}
+
+
 #region Custom Class Definition
+$CurrentClassName = "CustomInventory_UsersProfiles"
+
 $TemplateObject = New-Object PSObject
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfile" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileFolder" -Value $null
@@ -148,8 +188,6 @@ $TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserFullName" -Va
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserDescription" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserMail" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "ADDN" -Value $null
-
-New-WMIClass -ClassName "CustomInventory_UsersProfiles" -ClassTemplate $TemplateObject
 #endregion Custom Class Definition
 
 Try{
@@ -233,11 +271,11 @@ Try{
                     $CreateUserProfilObject | Add-Member -Name "Source" -membertype Noteproperty -Value "Local"
                 }else{
                     $CreateUserProfilObject | Add-Member -Name "Source" -membertype Noteproperty -Value "ActiveDirectory"
-                    $CreateUserProfilObject | Add-Member -Name "ADSamAccountName" -membertype Noteproperty -Value $UserResult.Properties.samaccountname
-                    $CreateUserProfilObject | Add-Member -Name "ADUserFullName" -membertype Noteproperty -Value  $UserResult.Properties.displayname
-                    $CreateUserProfilObject | Add-Member -Name "ADUserDescription" -membertype Noteproperty -Value  $UserResult.Properties.description
-                    $CreateUserProfilObject | Add-Member -Name "ADUserMail" -membertype Noteproperty -Value  $UserResult.Properties.mail
-                    $CreateUserProfilObject | Add-Member -Name "ADDN" -membertype Noteproperty -Value  $UserResult.Properties.distinguishedname                    
+                    $CreateUserProfilObject | Add-Member -Name "ADSamAccountName" -membertype Noteproperty -Value $UserResult.Properties.samaccountname 
+                    $CreateUserProfilObject | Add-Member -Name "ADUserFullName" -membertype Noteproperty -Value  $UserResult.Properties.displayname 
+                    $CreateUserProfilObject | Add-Member -Name "ADUserDescription" -membertype Noteproperty -Value  $UserResult.Properties.description 
+                    $CreateUserProfilObject | Add-Member -Name "ADUserMail" -membertype Noteproperty -Value  $UserResult.Properties.mail 
+                    $CreateUserProfilObject | Add-Member -Name "ADDN" -membertype Noteproperty -Value  $UserResult.Properties.distinguishedname
                 }
 
                 #Add Your Object to The ArrayList
@@ -248,11 +286,19 @@ Try{
     #endregion Custom Code
 
     #Convert all object in Array to WMI Instance
-    Add-WMIInstances -ClassName "CustomInventory_UsersProfiles" -ObjectArrayList $InstancesObjectArray
+    New-WMIClass -ClassName $CurrentClassName -ClassTemplate $TemplateObject
+    Add-WMIInstances -ClassName $CurrentClassName -ObjectArrayList $InstancesObjectArray
+    
     #Invoke Hardware Inventory
     Invoke-CCMHardwareInventory
-    return 0 #Script Process With Success (return 0 for SCCM)
+
+    #Test
+    Return (Test-WMIClass -ClassName $CurrentClassName)
 }catch{
-    Write-error "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
-    Return -1 #Script Failed  (return -1 for SCCM)
+    Write-Host "An error occurred : "
+    Write-Host "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
+
+    Write-Verbose $_
+    Write-Verbose "Return -1 for general error"
+    return -1
 }
