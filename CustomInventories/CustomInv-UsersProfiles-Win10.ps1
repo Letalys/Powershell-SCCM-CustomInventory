@@ -89,18 +89,16 @@ Function New-WMIClass{
     
     Begin{}
     Process{
-        $WMITest = Get-WmiObject $ClassName -ErrorAction SilentlyContinue
+        $CurrentWMI = Get-CimInstance $ClassName -ErrorAction SilentlyContinue
 
-	    if ($WMITest -ne $null) {
-            #Supression de la classe si existe
-		    $Output = "Suppression de la classe WMI : $ClassName"
-		    Remove-WmiObject $ClassName
+	    if ($CurrentWMI -ne $null) {
+		    $CurrentWMI | Remove-CimInstance
 
-		    $WMITest = Get-WmiObject $ClassName -ErrorAction SilentlyContinue
-		    if ($WMITest -eq $null) {
+		    $CurrentWMI = Get-CimInstance $ClassName -ErrorAction SilentlyContinue
+		    if ($CurrentWMI -eq $null) {
 			    $Output += "OK"
 		    } else {
-			    $Output += "Erreur la classe WMI est toujours présente"
+			    $Output += "WMI Instance always exist"
 			    exit 1
 		    }
 		    Write-Verbose $Output
