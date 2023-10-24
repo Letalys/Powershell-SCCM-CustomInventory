@@ -1,20 +1,30 @@
 <#
 .SYNOPSIS
-  Create Inventory for User session present in computer
+  Create Inventory for User session present in computer (Windows 7)
 .DESCRIPTION
   The create a custom inventory of all User session on the machine, connecting to Active Directory to retrieving User Information
 .OUTPUTS
   Explaination of the new WMI Class and properties and the ClassPath
     CustomInventory_UsersProfiles :: Root\Cimv2
-        "SSID" : Get the User SSID from the local registry
-        "Profile" : Get the User Profile path from the local registry
-        "Session" : Get the User session name from the local
-        "UserFullName" : Get the User mail from ActiveDirectory
-        "UserDescription" : Get the User Description from ActiveDirectory
-        "UserMail" : Get the User mail from ActiveDirectory
-  >
+        "Key" : User Account SSID
+        "UserProfile" : Name of Account
+        "UserProfileFolder" : Path to user profile
+        "UserProfileFolderSizeMB" : Size of User profile
+        "UserProfileDocumentsFolderySizeMB" : Size of Document folder
+        "UserProfileMusicFolderySizeMB" : Size of Music Folder
+        "UserProfileVideosFolderySizeMB" : Size of Video Folder
+        "UserProfilePicturesFolderySizeMB" : Size of Picture folder
+        "Source" : Local or Active Directory account
+        "ADSamAccountName" : AD Samaccount Name
+        "ADUserFullName" : Userfull name from active Directory
+        "ADUserDescription" : Userfull name from active Directory
+        "ADUserMail" : User mail from Active Directory
+        "ADDN" : Distinguished Name from Active Directoy 
+
 .NOTES
-    You must have rights to read AD from ADSI
+    You must have rights to read AD from ADSI.
+    The sizes returned may not be accurate because certain system files and folders are not taken into account during calculations 
+    But that leaves a good estimate
 .NOTES
   Version:        1.0
   Author:         Letalys
@@ -32,6 +42,11 @@
   Creation Date:  13/10/2023
   Purpose/Change: Add information to get profile folder and user document folder size and if a user arise from local user or AD user.
                   Changing Properties names
+.NOTES
+  Version:        2.2
+  Author:         Letalys
+  Creation Date:  24/10/2023
+  Purpose/Change: Add some information about folder profile size. Using WMIObject for working in Windows 7. 
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
@@ -73,7 +88,7 @@ Function New-WMIClass{
     Begin{}
     Process{
         #Check existing WMI Class
-        if($null -ne (Get-WmiObject $ClassName -ErrorAction SilentlyContinue)){Write-Output "Deleting class $ClassName" ; Remove-WmiObject $ClassName}
+        if($null -ne (Get-CimInstance $ClassName -ErrorAction SilentlyContinue)){Write-Output "Deleting class $ClassName" ; Remove-WmiObject $ClassName}
         Write-Output "Create New WMI Class :  $ClassName"
 
         $newClass = New-Object System.Management.ManagementClass("root\cimv2", [String]::Empty, $null);
@@ -124,6 +139,9 @@ $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfile" -Value
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileFolder" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileFolderSizeMB" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileDocumentsFolderySizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileMusicFolderySizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfileVideosFolderySizeMB" -Value $null
+$TemplateObject | Add-Member -MemberType NoteProperty -Name "UserProfilePicturesFolderySizeMB" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "Source" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "ADSamAccountName" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "ADUserFullName" -Value $null
@@ -160,20 +178,54 @@ Try{
 
                 $CreateUserProfilObject = New-Object Psobject
                 $CreateUserProfilObject | Add-Member -Name "Key" -membertype Noteproperty -Value $CurrentUserSID
+
                 $CreateUserProfilObject | Add-Member -Name "UserProfile" -membertype Noteproperty -Value $CurrentUserProfil
                 $CreateUserProfilObject | Add-Member -Name "UserProfileFolder" -membertype Noteproperty -Value $CurrentProfilePath.ProfileImagePath
 
-                $FullProfilSizeMo = [math]::Round((Get-ChildItem "$($CurrentProfilePath.ProfileImagePath)" -Recurse -Force | Measure-Object -Property Length -Sum).Sum / 1Mb,2)
+                $FullProfilSizeMo = [math]::Round((Get-ChildItem "$($CurrentProfilePath.ProfileImagePath)" -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1Mb,2)
                 $CreateUserProfilObject | Add-Member -Name "UserProfileFolderSizeMB" -membertype Noteproperty -Value $FullProfilSizeMo
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Documents") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Documents"
-                    $files = Get-ChildItem $FolderPath -Recurse -Force -File -ErrorAction Ignore
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilDocumentSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfileDocumentsFolderySizeMB" -MemberType NoteProperty -Value $FullProfilDocumentSizeMo
                     } else {
                         $CreateUserProfilObject | Add-Member -Name "UserProfileDocumentsFolderySizeMB" -MemberType NoteProperty -Value 0
+                    }
+                }
+
+                if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Videos") {
+                    $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Videos"
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    if ($files) {
+                        $FullProfilVideosSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileVideosFolderySizeMB" -MemberType NoteProperty -Value $FullProfilVideosSizeMo
+                    } else {
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileVideosFolderySizeMB" -MemberType NoteProperty -Value 0
+                    }
+                }
+
+                if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Music") {
+                    $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Music"
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    if ($files) {
+                        $FullProfilMusicSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileMusicFolderySizeMB" -MemberType NoteProperty -Value $FullProfilMusicSizeMo
+                    } else {
+                        $CreateUserProfilObject | Add-Member -Name "UserProfileMusicFolderySizeMB" -MemberType NoteProperty -Value 0
+                    }
+                }
+
+                if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Pictures") {
+                    $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Pictures"
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    if ($files) {
+                        $FullProfilPicturesSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+                        $CreateUserProfilObject | Add-Member -Name "UserProfilePicturesFolderySizeMB" -MemberType NoteProperty -Value $FullProfilPicturesSizeMo
+                    } else {
+                        $CreateUserProfilObject | Add-Member -Name "UserProfilePicturesFolderySizeMB" -MemberType NoteProperty -Value 0
                     }
                 }
 
