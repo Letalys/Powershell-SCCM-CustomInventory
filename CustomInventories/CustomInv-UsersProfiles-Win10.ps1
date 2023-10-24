@@ -187,7 +187,7 @@ Try{
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Documents") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Documents"
-                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilDocumentSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfileDocumentsFolderySizeMB" -MemberType NoteProperty -Value $FullProfilDocumentSizeMo
@@ -198,7 +198,7 @@ Try{
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Videos") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Videos"
-                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilVideosSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfileVideosFolderySizeMB" -MemberType NoteProperty -Value $FullProfilVideosSizeMo
@@ -209,7 +209,7 @@ Try{
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Music") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Music"
-                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilMusicSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfileMusicFolderySizeMB" -MemberType NoteProperty -Value $FullProfilMusicSizeMo
@@ -220,7 +220,7 @@ Try{
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Pictures") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Pictures"
-                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    $files = Get-ChildItem $FolderPath -Recurse -File -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilPicturesSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfilePicturesFolderySizeMB" -MemberType NoteProperty -Value $FullProfilPicturesSizeMo
