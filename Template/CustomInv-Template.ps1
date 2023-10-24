@@ -19,31 +19,30 @@
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
-$VerbosePreference = 'SilentlyContinue'
 
 Function Invoke-CCMHardwareInventory{
     Begin{
-      Write-Verbose "Trying to perform CCM hardware inventory..."
+      Write-Output "Trying to perform CCM hardware inventory..."
     }
     Process{
       Try{
         $GetSMSClient = Get-CimInstance -Class "SMS_Client" -Namespace 'root\ccm' -ErrorAction SilentlyContinue
         if($null -ne $GetSMSClient){
-            Write-Verbose "CCM Agent found, performing hardware inventory."
+            Write-Output "CCM Agent found, performing hardware inventory."
 
 	        $SMSClient = [wmiclass] "\\$($env:COMPUTERNAME)\root\ccm:SMS_Client"
 	        $SMSClient.TriggerSchedule("{00000000-0000-0000-0000-000000000001}") | Out-Null
         }else{
-            Write-Verbose "CCM Agent not found, will not perform hardware inventory."
+            Write-Warning "CCM Agent not found, will not perform hardware inventory."
         }
       }Catch{
-        Write-Verbose "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
+        Write-error "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
         Break
       }
     }
     End{
       If($?){
-        Write-Verbose "Completed Successfully."
+        Write-Output "Completed Successfully."
       }
     }
 }
@@ -57,24 +56,9 @@ Function New-WMIClass{
     
     Begin{}
     Process{
-            $WMITest = Get-WmiObject $ClassName -ErrorAction SilentlyContinue
-
-	    if ($WMITest -ne $null) {
-            #Supression de la classe si existe
-		    $Output = "Suppression de la classe WMI : $ClassName"
-		    Remove-WmiObject $ClassName
-
-		    $WMITest = Get-WmiObject $ClassName -ErrorAction SilentlyContinue
-		    if ($WMITest -eq $null) {
-			    $Output += "OK"
-		    } else {
-			    $Output += "Erreur la classe WMI est toujours présente"
-			    exit 1
-		    }
-		    Write-Verbose $Output
-	    }
-
-        Write-Verbose "Create New WMI Class :  $ClassName"
+        #Check existing WMI Class
+        if($null -ne (Get-WmiObject $ClassName -ErrorAction SilentlyContinue)){Write-Output "Deleting class $ClassName" ; Remove-WmiObject $ClassName}
+        Write-Output "Create New WMI Class :  $ClassName"
 
         $newClass = New-Object System.Management.ManagementClass("root\cimv2", [String]::Empty, $null);
 	    $newClass["__CLASS"] = $ClassName;
@@ -86,7 +70,7 @@ Function New-WMIClass{
         $TemplateProperties = $ClassTemplate | Get-Member -MemberType NoteProperty
 
         foreach($prop in $TemplateProperties){
-            Write-Verbose "`t Add Class Property : $($Prop.Name)"
+            Write-Output "`t Add Class Property : $($Prop.Name)"
             $newClass.Properties.Add("$($Prop.Name)", [System.Management.CimType]::String, $false)
         }
             
@@ -104,45 +88,26 @@ Function Add-WMIInstances {
     Begin{}
     Process{
         foreach($o in $ObjectArrayList){
-            #Create GUID Key
             $GUID = [GUID]::NewGuid()
-
             if($null -ne $o.Key){$Key = $o.key}else{$Key = $GUID}
+            $CurrentInstance = Set-WmiInstance -Namespace "root\cimv2" -class $ClassName -argument @{Key = $Key} 
 
-            $CurrentObjectPropertiesList = $o | Get-Member -MemberType NoteProperty
-
-            $AddInstance = New-CimInstance -ClassName $ClassName -Key $key -Property @{Key = $key}
-            Write-Verbose "Create Instance with key : $key"
-
-            foreach($prop in $CurrentObjectPropertiesList){
-                    Set-CimInstance -CimInstance $AddInstance -Property @{$Prop.Name = "$($o.($Prop.Name))"}     
+            foreach($prop in ($o| Get-Member -MemberType NoteProperty | Where-Object {$_.Name -ne "key"})){
+                $CurrentInstance.($prop.Name) = $o.($prop.Name)
+                $CurrentInstance.Put() | Out-Null
             }
+            Write-Output "Added Instance to $ClassName for : " $o
         }
     }
     End{}
 }
-Function Test-WMIClass{
-    [CmdletBinding()]
-	param
-	(
-		[ValidateNotNullOrEmpty()][Parameter(Mandatory=$true)][string]$ClassName
-	)
-    $ClassExist = Get-CimInstance -ClassName $ClassName
-    if($ClassExist -ne $null){
-        Write-Verbose "Return 0 for good execution"
-        return 0
-    }else{
-        Write-Verbose "Return 1 when Class Not create properly"
-        return 1
-    }
-}
 
 #region Custom Class Definition
-$CurrentClassName = "CustomInventory_YourClassName"
-
 $TemplateObject = New-Object PSObject
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "CustomProp1" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "CustomProp2" -Value $null
+
+New-WMIClass -ClassName "CustomClassName" -ClassTemplate $TemplateObject
 #endregion Custom Class Definition
 
 Try{
@@ -164,15 +129,12 @@ Try{
     $InstancesObjectArray.Add($MyObjectInstance) | Out-Null
 
     #Convert all object in Array to WMI Instance
-    New-WMIClass -ClassName $CurrentClassName -ClassTemplate $TemplateObject
-    Add-WMIInstances -ClassName $CurrentClassName -ObjectArrayList $InstancesObjectArray
+    Add-WMIInstances -ClassName "CustomClassName" -ObjectArrayList $InstancesObjectArray
     #endregion Custom Code
 
     #Invoke Hardware Inventory
     Invoke-CCMHardwareInventory
-    
-    #Test
-    Return (Test-WMIClass -ClassName $CurrentClassName)
+    return 0 #Script Process With Success (return 0 for SCCM)
 }catch{
     Write-error "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
     Return -1 #Script Failed  (return -1 for SCCM)
