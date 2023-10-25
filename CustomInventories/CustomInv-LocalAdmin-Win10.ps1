@@ -5,27 +5,22 @@
   The create a custom inventory of all User administrator on the machine, connecting to Active Directory to retrieving User Information or group information
 .OUTPUTS
   Explaination of the new WMI Class and properties and the ClassPath
-   CustomInventory_UsersProfiles :: Root\Cimv2
-        "Localgroup" : Name of local group if admin member is a group
-        "Name" : Name of Account
-        "Source" : If the group or account is a local or Active Directory
-        "Type" : user or group
-        "Session" : IF AD Account get Samaccountname
-        "Userfullname" : get the fullname of AD USer
-        "UserDescription" : get the user or group description of AD USer
-        "Usermail" : get the mail of AD USer
-        "DN" : get the full DistinguishedName
+  <Example :
+    Custom_WMIClassName :: Root\Cimv2
+        [String]PropertyName1 : Description
+        [String]PropertyName2 : Description
+  >
 .NOTES
-  Version:        2.0
-  Author:         Letalys
-  Creation Date:  25/10/2023
-  Purpose/Change: Using new template for Windows 10 inventories
+  Version:        1.0
+  Author:         <Your Name>
+  Creation Date:  <Creation Date>
+  Purpose/Change: Initial script development
 
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
 
-$VerbosePreference = 'Continue'
+$VerbosePreference = 'SilentlyContinue'
 
 Function Invoke-CCMHardwareInventory{
     Begin{
@@ -114,9 +109,7 @@ Function Add-WMIInstances {
             if($null -ne $o.Key){$Key = $o.key}else{$Key = $GUID}
 
             $CurrentObjectPropertiesList = $o | Get-Member -MemberType NoteProperty
-            write-host -ForegroundColor Yellow "TEST $key"
             $AddInstance = New-CimInstance -ClassName $ClassName -Key $key
-            write-host -ForegroundColor Yellow "TEST2"
             Write-Verbose "Create Instance with key : $key"
 
             foreach($prop in $CurrentObjectPropertiesList){
