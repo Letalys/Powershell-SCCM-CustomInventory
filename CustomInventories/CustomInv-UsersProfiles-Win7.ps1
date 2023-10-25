@@ -128,7 +128,7 @@ Function Add-WMIInstances {
 
             $CurrentObjectPropertiesList = $o | Get-Member -MemberType NoteProperty
 
-            $AddInstance = Set-WmiInstance -Class $ClassName -Property @{Key = $key} 
+            $AddInstance = Set-WmiInstance -Class $ClassName -Arguments @{Key = $key} 
 
             Write-Verbose "Create Instance with key : $key"
 
@@ -216,7 +216,7 @@ Try{
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Documents") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Documents"
-                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    $files = Get-ChildItem $FolderPath -Recurse  -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilDocumentSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfileDocumentsFolderySizeMB" -MemberType NoteProperty -Value $FullProfilDocumentSizeMo
@@ -227,7 +227,7 @@ Try{
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Videos") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Videos"
-                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    $files = Get-ChildItem $FolderPath -Recurse  -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilVideosSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfileVideosFolderySizeMB" -MemberType NoteProperty -Value $FullProfilVideosSizeMo
@@ -238,7 +238,7 @@ Try{
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Music") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Music"
-                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    $files = Get-ChildItem $FolderPath -Recurse  -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilMusicSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfileMusicFolderySizeMB" -MemberType NoteProperty -Value $FullProfilMusicSizeMo
@@ -249,7 +249,7 @@ Try{
 
                 if (Test-Path "$($CurrentProfilePath.ProfileImagePath)\Pictures") {
                     $FolderPath = "$($CurrentProfilePath.ProfileImagePath)\Pictures"
-                    $files = Get-ChildItem $FolderPath -Recurse -File -Directory -Force  -ErrorAction SilentlyContinue
+                    $files = Get-ChildItem $FolderPath -Recurse  -Force  -ErrorAction SilentlyContinue
                     if ($files) {
                         $FullProfilPicturesSizeMo = [math]::Round(($files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
                         $CreateUserProfilObject | Add-Member -Name "UserProfilePicturesFolderySizeMB" -MemberType NoteProperty -Value $FullProfilPicturesSizeMo
@@ -258,7 +258,7 @@ Try{
                     }
                 }
 
-                if($CurrentUserProfil -in $LocalUsers.Name){
+                if($LocalUsers.Name -Contains $CurrentUserProfil){
                     $CreateUserProfilObject | Add-Member -Name "Source" -membertype Noteproperty -Value "Local"
                 }else{
                     $CreateUserProfilObject | Add-Member -Name "Source" -membertype Noteproperty -Value "ActiveDirectory"
@@ -268,7 +268,7 @@ Try{
                     $CreateUserProfilObject | Add-Member -Name "ADUserMail" -membertype Noteproperty -Value  $UserResult.Properties.mail
                     $CreateUserProfilObject | Add-Member -Name "ADDN" -membertype Noteproperty -Value  $UserResult.Properties.distinguishedname                    
                 }
-
+                
                 #Add Your Object to The ArrayList
                 $InstancesObjectArray.Add($CreateUserProfilObject) | Out-Null
             }
@@ -281,7 +281,7 @@ Try{
     Add-WMIInstances -ClassName $CurrentClassName -ObjectArrayList $InstancesObjectArray
     
     #Invoke Hardware Inventory
-    #Invoke-CCMHardwareInventory
+    Invoke-CCMHardwareInventory
 
     #Test
     Return (Test-WMIClass -ClassName $CurrentClassName)
