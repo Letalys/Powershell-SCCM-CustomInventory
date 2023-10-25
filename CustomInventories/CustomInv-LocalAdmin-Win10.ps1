@@ -1,40 +1,55 @@
 <#
 .SYNOPSIS
-  Create Inventory for user or group in Local Administrator group
+  Create inventory for all object in local Administrator
 .DESCRIPTION
-  Create Inventory for user or group in Local Administrator group, connecting to Active Directory to retrieving User Information if the account is an AD Account or group
+  The create a custom inventory of all User administrator on the machine, connecting to Active Directory to retrieving User Information or group information
+.OUTPUTS
+  Explaination of the new WMI Class and properties and the ClassPath
+   CustomInventory_UsersProfiles :: Root\Cimv2
+        "Localgroup" : Name of local group if admin member is a group
+        "Name" : Name of Account
+        "Source" : If the group or account is a local or Active Directory
+        "Type" : user or group
+        "Session" : IF AD Account get Samaccountname
+        "Userfullname" : get the fullname of AD USer
+        "UserDescription" : get the user or group description of AD USer
+        "Usermail" : get the mail of AD USer
+        "DN" : get the full DistinguishedName
 .NOTES
-  Version:        1.0
+  Version:        2.0
   Author:         Letalys
-  Creation Date:  26/02/2023
-  Purpose/Change: Initial script development
+  Creation Date:  25/10/2023
+  Purpose/Change: Using new template for Windows 10 inventories
+
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
 
+$VerbosePreference = 'Continue'
+
 Function Invoke-CCMHardwareInventory{
     Begin{
-      Write-Output "Trying to perform CCM hardware inventory..."
+      Write-Verbose "Trying to perform CCM hardware inventory..."
     }
     Process{
       Try{
         $GetSMSClient = Get-CimInstance -Class "SMS_Client" -Namespace 'root\ccm' -ErrorAction SilentlyContinue
         if($null -ne $GetSMSClient){
-            Write-Output "CCM Agent found, performing hardware inventory."
+            Write-Verbose "CCM Agent found, performing hardware inventory."
 
 	        $SMSClient = [wmiclass] "\\$($env:COMPUTERNAME)\root\ccm:SMS_Client"
 	        $SMSClient.TriggerSchedule("{00000000-0000-0000-0000-000000000001}") | Out-Null
         }else{
-            Write-Warning "CCM Agent not found, will not perform hardware inventory."
+            Write-Verbose "CCM Agent not found, will not perform hardware inventory."
         }
       }Catch{
-        Write-error "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
+        Write-Verbose "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
         Break
       }
     }
     End{
       If($?){
-        Write-Output "Completed Successfully."
+        Write-Verbose "Completed Successfully."
       }
     }
 }
@@ -48,9 +63,22 @@ Function New-WMIClass{
     
     Begin{}
     Process{
-        #Check existing WMI Class
-        if($null -ne (Get-WmiObject $ClassName -ErrorAction SilentlyContinue)){Write-Output "Deleting class $ClassName" ; Remove-WmiObject $ClassName}
-        Write-Output "Create New WMI Class :  $ClassName"
+        $CurrentWMI = Get-CimInstance $ClassName -ErrorAction SilentlyContinue
+
+	    if ($CurrentWMI -ne $null) {
+		    $CurrentWMI | Remove-CimInstance
+
+		    $CurrentWMI = Get-CimInstance $ClassName -ErrorAction SilentlyContinue
+		    if ($CurrentWMI -eq $null) {
+			    $Output += "OK"
+		    } else {
+			    $Output += "WMI Instance always exist"
+			    exit 1
+		    }
+		    Write-Verbose $Output
+	    }
+
+        Write-Verbose "Create New WMI Class :  $ClassName"
 
         $newClass = New-Object System.Management.ManagementClass("root\cimv2", [String]::Empty, $null);
 	    $newClass["__CLASS"] = $ClassName;
@@ -62,7 +90,7 @@ Function New-WMIClass{
         $TemplateProperties = $ClassTemplate | Get-Member -MemberType NoteProperty
 
         foreach($prop in $TemplateProperties){
-            Write-Output "`t Add Class Property : $($Prop.Name)"
+            Write-Verbose "`t Add Class Property : $($Prop.Name)"
             $newClass.Properties.Add("$($Prop.Name)", [System.Management.CimType]::String, $false)
         }
             
@@ -80,34 +108,53 @@ Function Add-WMIInstances {
     Begin{}
     Process{
         foreach($o in $ObjectArrayList){
+            #Create GUID Key
             $GUID = [GUID]::NewGuid()
-            if($null -ne $o.Key){$Key = $o.key}else{$Key = $GUID}
-            $CurrentInstance = Set-WmiInstance -Namespace "root\cimv2" -class $ClassName -argument @{Key = $Key} 
 
-            foreach($prop in ($o| Get-Member -MemberType NoteProperty | Where-Object {$_.Name -ne "key"})){
-                $CurrentInstance.($prop.Name) = $o.($prop.Name)
-                $CurrentInstance.Put() | Out-Null
+            if($null -ne $o.Key){$Key = $o.key}else{$Key = $GUID}
+
+            $CurrentObjectPropertiesList = $o | Get-Member -MemberType NoteProperty
+            write-host -ForegroundColor Yellow "TEST $key"
+            $AddInstance = New-CimInstance -ClassName $ClassName -Key $key
+            write-host -ForegroundColor Yellow "TEST2"
+            Write-Verbose "Create Instance with key : $key"
+
+            foreach($prop in $CurrentObjectPropertiesList){
+               Set-CimInstance -CimInstance $AddInstance -Property @{$Prop.Name = "$($o.($Prop.Name))"}     
             }
-            Write-Output "Added Instance to $ClassName for : " $o
         }
     }
     End{}
 }
+Function Test-WMIClass{
+    [CmdletBinding()]
+	param
+	(
+		[ValidateNotNullOrEmpty()][Parameter(Mandatory=$true)][string]$ClassName
+	)
+    $ClassExist = Get-CimInstance -ClassName $ClassName
+    if($ClassExist -ne $null){
+        Write-Verbose "Return 0 for good execution"
+        return 0
+    }else{
+        Write-Verbose "Return 1 when Class Not create properly"
+        return 1
+    }
+}
 
 #region Custom Class Definition
+$CurrentClassName = "CustomInventory_LocalAdministrators"
+
 $TemplateObject = New-Object PSObject
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "LocalGroup" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "Name" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "Source" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "Type" -Value $null
-
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "Session" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserFullName" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserDescription" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "UserMail" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "DN" -Value $null
-
-New-WMIClass -ClassName "CustomInventory_LocalAdministrators" -ClassTemplate $TemplateObject
 #endregion Custom Class Definition
 
 Try{
@@ -120,7 +167,6 @@ Try{
         
         Foreach($Member in $LocalSecurtiyGroupMember){
             $MyObjectInstance = New-Object PSObject
-            $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "Key" -Value $Member.SID
             $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "LocalGroup" -Value $LocalSecurityGroupName
             $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "Name" -Value $Member.Name
             $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "Source" -Value $Member.PrincipalSource
@@ -131,7 +177,6 @@ Try{
                 $UserSearcher = [ADSISearcher]"(&(SamAccountName=$($Member.Name.split("\")[1])))"
                 $UserResult = $UserSearcher.FindOne()
 
-                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "Session" -Value $null
                 $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserFullName" -Value $UserResult.Properties.displayname
                 $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserDescription" -Value $UserResult.Properties.description
                 $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserMail" -Value $UserResult.Properties.mail
@@ -144,12 +189,18 @@ Try{
     #endregion Custom Code
 
     #Convert all object in Array to WMI Instance
-    Add-WMIInstances -ClassName "CustomInventory_LocalAdministrators" -ObjectArrayList $InstancesObjectArray
+    New-WMIClass -ClassName $CurrentClassName -ClassTemplate $TemplateObject
+    Add-WMIInstances -ClassName $CurrentClassName -ObjectArrayList $InstancesObjectArray
 
     #Invoke Hardware Inventory
     Invoke-CCMHardwareInventory
-    return 0 #Script Process With Success (return 0 for SCCM)
+
+    Return (Test-WMIClass -ClassName $CurrentClassName)
 }catch{
-    Write-error "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
-    Return -1 #Script Failed  (return -1 for SCCM)
+    Write-Host "An error occurred : "
+    Write-Host "$($_.InvocationInfo.ScriptLineNumber) : $($_)"
+
+    Write-Verbose $_
+    Write-Verbose "Return -1 for general error"
+    return -1
 }
