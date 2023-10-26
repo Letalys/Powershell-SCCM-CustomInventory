@@ -95,7 +95,7 @@ Function Add-WMIInstances {
 
             $CurrentObjectPropertiesList = $o | Get-Member -MemberType NoteProperty
 
-            $AddInstance = Set-WmiInstance -Class $ClassName -Property @{Key = $key} 
+            $AddInstance = Set-WmiInstance -Class $ClassName -Argument @{Key = $key} 
 
             Write-Verbose "Create Instance with key : $key"
 
@@ -131,7 +131,7 @@ Function Test-WMIClass{
 }
 
 #region Custom Class Definition
-$CurrentClassName = "CustomInventory_UsersProfiles"
+$CurrentClassName = "CustomInventory_Name"
 
 $TemplateObject = New-Object PSObject
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "CustomProp1" -Value $null
