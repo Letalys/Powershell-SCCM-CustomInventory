@@ -1,26 +1,25 @@
 <#
 .SYNOPSIS
-  Inventory for Oracle Client installed by OUI
+  Create inventory for all object in local Administrator
 .DESCRIPTION
-  This create an inventory to get all Oracle Information installed by OUI, not work for Instant Client
-  because there is no information into the registry.
+  The create a custom inventory of all User administrator on the machine, connecting to Active Directory to retrieving User Information or group information
 .OUTPUTS
   Explaination of the new WMI Class and properties and the ClassPath
-  <Example :
-    CustomInventory_OracleClients :: Root\Cimv2
-        "Oracle_HomeName" : Get The Oracle Home Name
-        "Oracle_Home" : Get the Oracle Home Value
-        "Oracle_Dll" Get the main Oracle DLL
-        "Oracle_Version" : Get the main version
-        "Oracle_Platform" : Oracle Client Plateform
-  >
-
-  .NOTES
+   CustomInventory_UsersProfiles :: Root\Cimv2
+        "Localgroup" : Name of local group if admin member is a group
+        "Name" : Name of Account
+        "Source" : If the group or account is a local or Active Directory
+        "Type" : user or group
+        "Session" : IF AD Account get Samaccountname
+        "Userfullname" : get the fullname of AD USer
+        "UserDescription" : get the user or group description of AD USer
+        "Usermail" : get the mail of AD USer
+        "DN" : get the full DistinguishedName
+.NOTES
   Version:        2.0
   Author:         Letalys
   Creation Date:  25/10/2023
-  Purpose/Change: Update with new template WIndows 7
-
+  Purpose/Change: Using new template for Windows 10 inventories
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
