@@ -182,10 +182,11 @@ Try{
             $UserSearcher = [ADSISearcher]"(&(sAMAccountName=$MemberName))"
             $UserResult = $UserSearcher.FindOne()
             if ($UserResult -ne $null) {
-                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserFullName" -Value $UserResult.Properties["displayName"][0]
-                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserDescription" -Value $UserResult.Properties["description"][0]
-                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserMail" -Value $UserResult.Properties["mail"][0]
-                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "DN" -Value $UserResult.Properties["distinguishedName"][0]
+	    	#Add [0] if neccessary for user result properties, sample : $UserResult.Properties["displayName"][0]
+                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserFullName" -Value $UserResult.Properties["displayName"]
+                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserDescription" -Value $UserResult.Properties["description"]
+                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "UserMail" -Value $UserResult.Properties["mail"]
+                $MyObjectInstance | Add-Member -MemberType NoteProperty -Name "DN" -Value $UserResult.Properties["distinguishedName"]
             }
         }
 
