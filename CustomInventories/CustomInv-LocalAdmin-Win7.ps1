@@ -19,7 +19,7 @@
   Version:        2.0
   Author:         Letalys
   Creation Date:  25/10/2023
-  Purpose/Change: Using new template for Windows 10 inventories
+  Purpose/Change: Using new template for Windows 7 inventories
 .LINK
     Author : Letalys (https://github.com/Letalys)
 #>
