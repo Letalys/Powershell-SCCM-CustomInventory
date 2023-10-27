@@ -47,8 +47,8 @@ Function Remove-WMIInstance{
 
 Try{
     $ClassNameList = @(
-        "DriversCustomInventory",
-        "PnpSignedDrivers_CustomInventory"
+        "ClassName1",
+        "ClassName2"
     )
 
     foreach($ClassName in $ClassNameList){
