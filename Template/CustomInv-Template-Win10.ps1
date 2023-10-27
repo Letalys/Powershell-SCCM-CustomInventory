@@ -108,7 +108,7 @@ Function Add-WMIInstances {
 
             $CurrentObjectPropertiesList = $o | Get-Member -MemberType NoteProperty
 
-            $AddInstance = New-CimInstance -ClassName $ClassName -Key $key -Property @{Key = $key}
+            $AddInstance = New-CimInstance -ClassName $ClassName -Key $key #-Property @{Key = $key}
             Write-Verbose "Create Instance with key : $key"
 
             foreach($prop in $CurrentObjectPropertiesList){
@@ -135,19 +135,18 @@ Function Test-WMIClass{
 }
 
 #region Custom Class Definition
-$CurrentClassName = "CustomInventory_UsersProfiles"
+$CurrentClassName = "CustomInventory_YourCustomName"
 
 $TemplateObject = New-Object PSObject
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "CustomProp1" -Value $null
 $TemplateObject | Add-Member -MemberType NoteProperty -Name "CustomProp2" -Value $null
 #endregion Custom Class Definition
 
-Try{  
-    #region Custom Code
+Try{ 
     #Define the ArrayList for your Instances Objects
-
     [System.Collections.Arraylist]$InstancesObjectArray =@()
     
+#region Custom Code
     <#
     Put your code for generating one or several Instance Object, you need to respect template object Property
     You can Add Key Property value if you want customize it, else a GUID is generated for the instance key
@@ -161,6 +160,7 @@ Try{
     
     #Add Your Object to The ArrayList
     $InstancesObjectArray.Add($MyObjectInstance) | Out-Null
+#endregion Custom Code
 
     #Convert all object in Array to WMI Instance
     New-WMIClass -ClassName $CurrentClassName -ClassTemplate $TemplateObject
