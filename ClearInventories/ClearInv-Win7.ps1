@@ -13,7 +13,7 @@
     Author : Letalys (https://github.com/Letalys)
 #>
 
-$VerbosePreference = 'Continue'
+$VerbosePreference = 'SilentlyContinue'
 
 Function Remove-WMIInstance{
     [CmdletBinding()]
