@@ -74,7 +74,7 @@ For each there is a version for Windows 7 and a version for Windows 10 and highe
 It is advisable, if you use the 2 versions of the same script, to keep the same class name for simplified use in MECM and not to increase the number of WMI elements unnecessarily
 
 |Script|Description|Win7|Win10|
-|-|-|-|-|
+|------|------|------|------|
 |LocalAdmin| Obtain the list of members of the local machine administrators group and retrieve object information from an Active Directory domain  |[Link](./CustomInventories/CustomInv-LocalAdmin-Win7.ps1)|[Link](./CustomInventories/CustomInv-LocalAdmin-Win10.ps1)
 |OracleClient| Retrieves information on the Oracle client installations installed by the OUI (Oracle_Home, Dll version, Architecture, etc.) |[Link](./CustomInventories/CustomInv-OracleClient-Win7.ps1)|[Link](./CustomInventories/CustomInv-OracleClient-Win10.ps1)
 |PnPDrivers| Retrieves all information from the drivers installed on the machine. Drivers are not inventoried by SCCM by default |[Link](./CustomInventories/CustomInv-PnPDrivers-Win7.ps1)|[Link](./CustomInventories/CustomInv-PnPDrivers-Win10.ps1)
