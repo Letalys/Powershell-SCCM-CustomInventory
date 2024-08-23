@@ -75,11 +75,11 @@ It is advisable, if you use the 2 versions of the same script, to keep the same 
 
 |Script|Description|Win7|Win10|
 |------|------|------|------|
-|LocalAdmin| Obtain the list of members of the local machine administrators group and retrieve object information from an Active Directory domain  |[Link](./CustomInventories/CustomInv-LocalAdmin-Win7.ps1)|[Link](./CustomInventories/CustomInv-LocalAdmin-Win10.ps1)
-|OracleClient| Retrieves information on the Oracle client installations installed by the OUI (Oracle_Home, Dll version, Architecture, etc.) |[Link](./CustomInventories/CustomInv-OracleClient-Win7.ps1)|[Link](./CustomInventories/CustomInv-OracleClient-Win10.ps1)
-|PnPDrivers| Retrieves all information from the drivers installed on the machine. Drivers are not inventoried by SCCM by default |[Link](./CustomInventories/CustomInv-PnPDrivers-Win7.ps1)|[Link](./CustomInventories/CustomInv-PnPDrivers-Win10.ps1)
-|SMB1Protocol| Check if SMB1 protocol is Enabled or Disables on computer |[Link](./CustomInventories/CustomInv-SMB1Protocol-Win7.ps1)|[Link](./CustomInventories/CustomInv-SMB1Protocol-Win10.ps1)
-|UsersProfiles| Retrieves the list of profiles or sessions created on a computer, if it is a domain profile, then information is retrieved from Active Directory. Also retrieves the size of profiles and some user directories. |[Link](./CustomInventories/CustomInv-UsersProfiles-Win7.ps1)|[Link](./CustomInventories/CustomInv-UsersProfiles-Win10.ps1)
+|LocalAdmin| Obtain the list of members of the local machine administrators group and retrieve object information from an Active Directory domain  |[Link](./CustomInventories/CustomInv-LocalAdmin-Win7.ps1)|[Link](./CustomInventories/CustomInv-LocalAdmin-Win10.ps1) |
+|OracleClient| Retrieves information on the Oracle client installations installed by the OUI (Oracle_Home, Dll version, Architecture, etc.) |[Link](./CustomInventories/CustomInv-OracleClient-Win7.ps1)|[Link](./CustomInventories/CustomInv-OracleClient-Win10.ps1) |
+|PnPDrivers| Retrieves all information from the drivers installed on the machine. Drivers are not inventoried by SCCM by default |[Link](./CustomInventories/CustomInv-PnPDrivers-Win7.ps1)|[Link](./CustomInventories/CustomInv-PnPDrivers-Win10.ps1) |
+|SMB1Protocol| Check if SMB1 protocol is Enabled or Disables on computer |[Link](./CustomInventories/CustomInv-SMB1Protocol-Win7.ps1)|[Link](./CustomInventories/CustomInv-SMB1Protocol-Win10.ps1) |
+|UsersProfiles| Retrieves the list of profiles or sessions created on a computer, if it is a domain profile, then information is retrieved from Active Directory. Also retrieves the size of profiles and some user directories. |[Link](./CustomInventories/CustomInv-UsersProfiles-Win7.ps1)|[Link](./CustomInventories/CustomInv-UsersProfiles-Win10.ps1) |
 
 ## Clean up obsolete objects and classes
 If there are objects and classes that are no longer used, don't forget to clean them up on your IT equipment.
